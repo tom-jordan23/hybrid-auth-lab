@@ -23,18 +23,17 @@ services:
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloak_password
-      KC_HOSTNAME: localhost
-      KC_HOSTNAME_PORT: 8080
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
       KC_HTTP_ENABLED: true
       KC_HEALTH_ENABLED: true
       KC_METRICS_ENABLED: true
+      KC_PROXY: edge
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin_password
     ports:
-      - "8080:8080"
-      - "8443:8443"
+      - "0.0.0.0:8080:8080"
+      - "0.0.0.0:8443:8443"
     volumes:
       - ./keycloak-server/config:/opt/keycloak/conf/custom:ro
       - ./keycloak-server/themes:/opt/keycloak/themes/custom:ro
@@ -54,10 +53,10 @@ services:
       dockerfile: Dockerfile
     container_name: ubuntu-sshd-client
     environment:
-      ROOT_PASSWORD: root_password
-      USER_PASSWORD: vagrant
+      ROOT_PASSWORD: SecureRoot123!
+      USER_PASSWORD: SecureUser123!
     ports:
-      - "2222:22"  # SSH access
+      - "0.0.0.0:2222:22"  # SSH access from any network interface
     volumes:
       - ./linux-client/config:/etc/ssh/custom:ro
       - ./linux-client/config:/opt/config:rw

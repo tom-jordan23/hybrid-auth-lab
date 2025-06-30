@@ -43,6 +43,7 @@ cd windows-ad-server
 
 ### 3. Access Services
 
+**Local Access:**
 - **Keycloak Admin Console**: http://localhost:8080
   - Username: `admin`
   - Password: `admin_password`
@@ -50,10 +51,16 @@ cd windows-ad-server
 - **Ubuntu SSHD Client**: 
   ```bash
   ssh vagrant@localhost -p 2222
-  # Password: vagrant
+  # Password: SecureUser123!
   ```
 
-- **Windows AD Server**: Connect via RDP or manage through QEMU console
+**Local Network Access:**
+- Run `./network-info.sh` to get your local IP and access information
+- Services are accessible from other devices on your local network
+- **Keycloak**: `http://YOUR_LOCAL_IP:8080`
+- **SSH**: `ssh vagrant@YOUR_LOCAL_IP -p 2222`
+
+**Windows AD Server**: Connect via RDP or manage through QEMU console
 
 ## Building from Scratch
 
@@ -184,6 +191,60 @@ ssh vagrant@localhost -p 2222
 - Keycloak: `172.20.0.x:8080`
 - Ubuntu SSHD: `172.20.0.x:22`
 - Windows AD: Configure QEMU network to bridge with Docker network
+
+## Network Access
+
+### Local Network Connectivity
+
+The services are configured to be accessible from your local network, not just localhost:
+
+- **Keycloak**: Accessible on port 8080 from any device on your local network
+- **SSH**: Accessible on port 2222 from any device on your local network
+- **Ports bound to**: `0.0.0.0` (all network interfaces)
+
+### Getting Network Information
+
+Use the network information script to see access details:
+
+```bash
+# Show local IP and connection information
+./network-info.sh
+
+# Test connectivity from local network
+./network-info.sh
+```
+
+### Firewall Configuration
+
+If you can't access services from other devices, you may need to configure your firewall:
+
+**Ubuntu/Debian (UFW):**
+```bash
+sudo ufw allow 8080/tcp comment 'Keycloak HTTP'
+sudo ufw allow 8443/tcp comment 'Keycloak HTTPS'  
+sudo ufw allow 2222/tcp comment 'SSH to Ubuntu container'
+```
+
+**CentOS/RHEL (firewalld):**
+```bash
+sudo firewall-cmd --add-port=8080/tcp --permanent
+sudo firewall-cmd --add-port=8443/tcp --permanent
+sudo firewall-cmd --add-port=2222/tcp --permanent
+sudo firewall-cmd --reload
+```
+
+### Accessing from Different Devices
+
+**From Windows:**
+- Browse to: `http://YOUR_LOCAL_IP:8080`
+- SSH: Use PuTTY or Windows SSH client to `YOUR_LOCAL_IP:2222`
+
+**From macOS/Linux:**
+- Browse to: `http://YOUR_LOCAL_IP:8080`
+- SSH: `ssh vagrant@YOUR_LOCAL_IP -p 2222`
+
+**From Mobile:**
+- Browse to: `http://YOUR_LOCAL_IP:8080`
 
 ## Development
 

@@ -1,0 +1,45 @@
+# Docker Compose Override Template
+# Copy this file to docker-compose.override.yml and modify as needed
+# This file is ignored by git (.gitignore)
+
+version: '3.8'
+
+services:
+  keycloak:
+    environment:
+      # Uncomment and modify these for custom hostname configuration
+      # KC_HOSTNAME: your-domain.com
+      # KC_HOSTNAME_PORT: 8080
+      # KC_HOSTNAME_STRICT: true
+      
+      # For HTTPS/SSL configuration
+      # KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/tls.crt
+      # KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/tls.key
+    
+    # Uncomment for custom port mapping
+    # ports:
+    #   - "80:8080"    # HTTP on port 80
+    #   - "443:8443"   # HTTPS on port 443
+    
+    # Uncomment for SSL certificate mounting
+    # volumes:
+    #   - ./ssl/tls.crt:/opt/keycloak/conf/tls.crt:ro
+    #   - ./ssl/tls.key:/opt/keycloak/conf/tls.key:ro
+
+  ubuntu-sshd:
+    # Uncomment for custom SSH port
+    # ports:
+    #   - "22:22"      # Use standard SSH port (may conflict with host SSH)
+    
+    # Uncomment for additional environment variables
+    # environment:
+    #   - CUSTOM_VAR=value
+
+# Uncomment for custom network configuration
+# networks:
+#   hybrid-auth-network:
+#     driver: bridge
+#     ipam:
+#       config:
+#         - subnet: 192.168.100.0/24
+#           gateway: 192.168.100.1

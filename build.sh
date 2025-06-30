@@ -9,10 +9,18 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+# Check for docker compose (newer) or docker-compose (older)
+DOCKER_COMPOSE_CMD=""
+if docker compose version &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+else
     echo "Error: Docker Compose is not installed. Please install Docker Compose first."
     exit 1
 fi
+
+echo "Using: $DOCKER_COMPOSE_CMD"
 
 # Check if Packer is installed (for Windows VM)
 if ! command -v packer &> /dev/null; then
@@ -31,10 +39,10 @@ echo "=== Building Docker Services ==="
 
 # Build and start Docker services
 echo "Building Docker images..."
-docker-compose build
+$DOCKER_COMPOSE_CMD build
 
 echo "Starting services..."
-docker-compose up -d
+$DOCKER_COMPOSE_CMD up -d
 
 echo "Waiting for services to be ready..."
 sleep 10
@@ -42,7 +50,7 @@ sleep 10
 # Check service status
 echo ""
 echo "=== Service Status ==="
-docker-compose ps
+$DOCKER_COMPOSE_CMD ps
 
 echo ""
 echo "=== Service Health Checks ==="
@@ -72,11 +80,15 @@ echo ""
 echo "Ubuntu SSHD Client: ssh vagrant@localhost -p 2222"
 echo "  Password: vagrant"
 echo ""
+echo "=== Network Access ==="
+echo "Run './network-info.sh' to see local network access information"
+echo ""
 echo "=== Next Steps ==="
 echo "1. Access Keycloak and configure your realm"
 echo "2. Test SSH access to Ubuntu client"
 echo "3. Build Windows AD server: cd windows-ad-server && packer build windows-2022-ad-ldif.json"
 echo "4. Configure authentication integration between services"
+echo "5. Run './network-info.sh' to see how to access from other devices"
 echo ""
-echo "View logs: docker-compose logs -f"
-echo "Stop services: docker-compose down"
+echo "View logs: $DOCKER_COMPOSE_CMD logs -f"
+echo "Stop services: $DOCKER_COMPOSE_CMD down"
