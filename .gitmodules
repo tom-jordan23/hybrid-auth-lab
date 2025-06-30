@@ -1,0 +1,3 @@
+[submodule "windows-ad-server"]
+	path = windows-ad-server
+	url = https://github.com/tom-jordan23/ad-dc-vagrant.git

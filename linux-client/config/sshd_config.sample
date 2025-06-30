@@ -1,0 +1,62 @@
+# Sample SSH daemon configuration with Active Directory support
+# Copy this file to sshd_config and modify for your environment
+
+# Basic SSH settings
+Port 22
+Protocol 2
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Logging
+SyslogFacility AUTH
+LogLevel INFO
+
+# Authentication settings
+LoginGraceTime 2m
+PermitRootLogin yes
+StrictModes yes
+MaxAuthTries 6
+MaxSessions 10
+
+# Enable password authentication
+PasswordAuthentication yes
+PermitEmptyPasswords no
+
+# Enable public key authentication
+PubkeyAuthentication yes
+
+# Enable Kerberos authentication for AD users
+KerberosAuthentication yes
+KerberosOrLocalPasswd yes
+KerberosTicketCleanup yes
+KerberosGetAFSToken no
+
+# Enable GSSAPI authentication (for Active Directory)
+GSSAPIAuthentication yes
+GSSAPICleanupCredentials yes
+GSSAPIStrictAcceptorCheck yes
+GSSAPIKeyExchange no
+
+# Use PAM for authentication (integrates with SSSD)
+UsePAM yes
+
+# X11 forwarding
+X11Forwarding yes
+X11DisplayOffset 10
+PrintMotd no
+PrintLastLog yes
+TCPKeepAlive yes
+
+# Allow specific users/groups
+# AllowUsers vagrant root
+# AllowGroups sudo adm
+
+# Subsystem configuration
+Subsystem sftp /usr/lib/openssh/sftp-server
+
+# Accept locale-related environment variables
+AcceptEnv LANG LC_CTYPE LC_NUMERIC LC_TIME LC_COLLATE LC_MONETARY LC_MESSAGES
+AcceptEnv LC_PAPER LC_NAME LC_ADDRESS LC_TELEPHONE LC_MEASUREMENT
+AcceptEnv LC_IDENTIFICATION LC_ALL LANGUAGE
+AcceptEnv XMODIFIERS

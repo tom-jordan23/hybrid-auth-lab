@@ -1,0 +1,38 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  network:
+    network:
+      version: 2
+      ethernets:
+        enp0s3:
+          dhcp4: true
+  storage:
+    layout:
+      name: direct
+    swap:
+      size: 0
+  identity:
+    hostname: keycloak-server
+    username: vagrant
+    password: '$6$rounds=4096$saltsalt$L9tjczoIVP68LRtkPdAqJz.xz/LSIkfcKlxOuYTOr9HP9.2km2dW9S.2yvWaVeZM5ZSZ5Zk5xG2CxFzl7Tx5Y0'
+  ssh:
+    install-server: true
+    allow-pw: true
+  packages:
+    - openssh-server
+    - vim
+    - curl
+    - wget
+    - net-tools
+    - htop
+    - unzip
+  user-data:
+    disable_root: false
+    ssh_pwauth: true
+  late-commands:
+    - echo 'vagrant ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/vagrant
+    - chmod 0440 /target/etc/sudoers.d/vagrant

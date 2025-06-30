@@ -1,0 +1,69 @@
+{
+  "builders": [
+    {
+      "type": "qemu",
+      "iso_url": "https://releases.ubuntu.com/22.04.3/ubuntu-22.04.3-live-server-amd64.iso",
+      "iso_checksum": "sha256:a4acfda10b18da50e2ec50ccaf860d7f20b389df8765611142305c0e911d16fd",
+      "output_directory": "ubuntu-22.04-ad-client-qemu",
+      "shutdown_command": "echo 'vagrant' | sudo -S shutdown -P now",
+      "disk_size": "20480",
+      "format": "qcow2",
+      "accelerator": "kvm",
+      "http_directory": "http",
+      "http_port_min": 8000,
+      "http_port_max": 8099,
+      "ssh_username": "vagrant",
+      "ssh_password": "vagrant",
+      "ssh_timeout": "20m",
+      "vm_name": "ubuntu-22.04-ad-client",
+      "net_device": "virtio-net",
+      "disk_interface": "virtio",
+      "boot_wait": "5s",
+      "boot_command": [
+        "c",
+        "set gfxpayload=keep",
+        "linux /casper/vmlinuz quiet autoinstall ds=nocloud-net\\;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ---",
+        "initrd /casper/initrd",
+        "boot"
+      ],
+      "headless": true,
+      "vnc_bind_address": "0.0.0.0",
+      "vnc_port_min": 5900,
+      "vnc_port_max": 5999,
+      "memory": 2048,
+      "cpus": 2
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "echo 'System is ready for provisioning'"
+      ]
+    },
+    {
+      "type": "shell",
+      "script": "scripts/update-system.sh"
+    },
+    {
+      "type": "shell",
+      "script": "scripts/install-ad-tools.sh"
+    },
+    {
+      "type": "shell",
+      "script": "scripts/configure-sssd.sh"
+    },
+    {
+      "type": "shell",
+      "script": "scripts/configure-pam.sh"
+    },
+    {
+      "type": "shell",
+      "script": "scripts/configure-ssh.sh"
+    },
+    {
+      "type": "shell",
+      "script": "scripts/cleanup.sh"
+    }
+  ]
+}
