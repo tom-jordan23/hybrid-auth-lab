@@ -2,15 +2,18 @@
 
 ## What This Tutorial Teaches
 
-This project demonstrates how to modernize SSH authentication using **OAuth 2.0 Device Flow** instead of traditional passwords or SSH keys. You'll learn to integrate modern identity providers (like Keycloak) with traditional Linux services.
+This project demonstrates how to modernize SSH authentication using **OAuth 2.0 Device Flow** instead of traditional passwords or SSH keys. You'll learn to integrate modern identity providers (like Keycloak) with traditional Linux services, optionally federated with Windows Active Directory.
 
-## 🚀 Quick Start (5 minutes)
+## 🚀 Quick Start (5 minutes) - Docker Only
 
-### 1. Start the Environment
+### 1. Start the Core Environment
 ```bash
 git clone <this-repo>
 cd hybrid-auth-lab
 ./build.sh
+
+# Verify everything is working
+./check-status.sh
 ```
 
 ### 2. Test OAuth Device Flow
@@ -30,6 +33,50 @@ When prompted:
 2. Open the URL in your browser  
 3. Enter the code and login with: `testuser` / `testpass`
 4. Your SSH session will be established!
+
+## 🏢 Full Lab Setup (20 minutes) - With Windows AD
+
+For the complete hybrid authentication experience including Windows Active Directory:
+
+### Prerequisites
+```bash
+# Install required software (Ubuntu/Debian)
+sudo apt install qemu-kvm qemu-system-x86 qemu-utils packer
+
+# OR for Fedora/RHEL
+sudo dnf install qemu-kvm qemu-system-x86 packer
+
+# Add user to kvm group and relogin
+sudo usermod -a -G kvm $USER
+# Logout and login again
+```
+
+**System Requirements:**
+- 8GB+ RAM (4GB for Windows VM)
+- 20GB+ free disk space
+- CPU with virtualization support
+
+### Full Setup Steps
+```bash
+# 1. Start Docker components
+./build.sh
+
+# 2. Build Windows AD server (takes 15-20 minutes)
+cd windows-ad-server
+./build-vm.sh
+
+# 3. Start Windows AD server
+./start-vm.sh
+
+# 4. Check complete status
+cd .. && ./check-status.sh
+
+# 5. Configure Keycloak to use Windows AD
+./setup-ad-ldap.sh
+
+# 6. Test complete integration
+ssh windowsuser@localhost -p 2222
+```
 
 ## 🎯 What's Different About This Authentication?
 
@@ -144,3 +191,50 @@ The tutorial provides a complete foundation for implementing OAuth Device Flow a
 - **Found a bug?** Please open an issue with details about your environment
 
 This tutorial bridges the gap between traditional Linux infrastructure and modern identity management - start exploring!
+
+## 🔧 Quick Troubleshooting
+
+### Docker Issues
+```bash
+# Check if containers are running
+docker compose ps
+
+# View logs if something failed
+docker compose logs keycloak-server
+docker compose logs ubuntu-sshd-client
+
+# Restart if needed
+docker compose restart
+```
+
+### Windows VM Issues
+```bash
+# Check VM status
+cd windows-ad-server && ./status.sh
+
+# Check if QEMU/KVM is working
+qemu-system-x86_64 --version
+groups | grep kvm  # Should show kvm group
+
+# Common fixes
+sudo systemctl start libvirtd  # Start KVM service
+sudo modprobe kvm-intel        # Load KVM module (Intel)
+sudo modprobe kvm-amd          # Load KVM module (AMD)
+```
+
+### SSH OAuth Issues
+```bash
+# Test OAuth endpoint manually
+curl -X POST -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=ssh-pam-client&client_secret=ssh-pam-client-secret-2024-hybrid-auth-lab" \
+  "http://localhost:8080/realms/hybrid-auth/protocol/openid-connect/auth/device"
+
+# Check if Keycloak is accessible
+curl http://localhost:8080/realms/hybrid-auth/.well-known/openid_configuration
+```
+
+### Common Issues
+- **"Port already in use"**: Stop other services using ports 8080, 2222, 3389
+- **"Permission denied (kvm)"**: Add user to kvm group and relogin
+- **"VM build fails"**: Check available disk space (need 20GB+)
+- **"OAuth timeout"**: Check browser isn't blocking popups

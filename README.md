@@ -76,34 +76,76 @@ This approach provides:
 - **Better UX**: Rich browser-based authentication experience
 - **Better Management**: Centralized user and policy management
 
-## Quick Start Tutorial
+## Complete Quick Start (Fresh Install)
 
-### Step 1: Start the OAuth Environment
+### Prerequisites
+- Linux/macOS with Docker and Docker Compose
+- QEMU/KVM for Windows VM (optional but recommended for full lab)
+- At least 8GB RAM and 20GB free disk space
+
+### Step 1: Clone and Setup
 ```bash
-# Clone and start the lab environment
+# Clone the repository
 git clone <this-repo>
 cd hybrid-auth-lab
+
+# Make scripts executable
+chmod +x *.sh
+```
+
+### Step 2: Start Core Components (OAuth + SSH)
+```bash
+# Start Keycloak and Ubuntu SSH server
 ./build.sh
 ```
 
 This starts:
-- Keycloak OAuth server with pre-configured realm
-- Ubuntu SSH server with OAuth PAM integration
-- Pre-configured OAuth client with device flow enabled
+- **Keycloak OAuth server** (port 8080) with pre-configured realm
+- **Ubuntu SSH server** (port 2222) with OAuth PAM integration
+- **PostgreSQL database** for Keycloak
+- **Network bridge** for container communication
 
-### Step 2: Understanding the Components
+### Step 3: Start Windows AD Server (Optional)
 ```bash
+# Build Windows 2022 AD server VM
+cd windows-ad-server
+./build-vm.sh
+
+# Start the Windows AD VM
+./start-vm.sh
+```
+
+This creates:
+- **Windows Server 2022** with Active Directory
+- **Domain Controller** with test users
+- **LDAP server** (ports 389/636) for Keycloak integration
+
+**Note**: Windows VM requires ~4GB RAM and takes 15-20 minutes to build.
+
+### Step 4: Verify Everything is Running
+```bash
+# Comprehensive status check
+./check-status.sh
+
+# Quick Docker check
+docker compose ps
+
+# Windows VM status (if applicable)
+cd windows-ad-server && ./status.sh && cd ..
+
 # Test OAuth integration
 ./test-oauth-integration.sh
 ```
 
-This script demonstrates:
-- OAuth client authentication with Keycloak
-- Device Flow endpoint functionality
-- PAM module configuration
-- End-to-end connectivity
+**Expected status from `./check-status.sh`:**
+- ✅ Docker containers: keycloak-server, ubuntu-sshd-client, keycloak-db
+- ✅ Keycloak accessible on port 8080
+- ✅ SSH server accessible on port 2222
+- ✅ OAuth Device Flow endpoint working
+- ⚠️ Windows VM: Built but not running (if you haven't started it)
+- ✅ System prerequisites: Docker, jq, etc.
 
-### Step 3: Experience OAuth Device Flow
+### Step 5: Test OAuth Device Flow
 ```bash
 # Interactive device flow demo
 ./demo-oauth-device-flow.sh
@@ -116,7 +158,7 @@ This will:
 4. Wait for you to authenticate
 5. Show the resulting OAuth tokens
 
-### Step 4: Test SSH with OAuth
+### Step 6: Test SSH with OAuth
 ```bash
 # Try SSH login (will trigger OAuth flow)
 ssh testuser@localhost -p 2222
@@ -128,6 +170,16 @@ When prompted:
 3. Enter the device code
 4. Authenticate with: `testuser` / `testpass`
 5. SSH session will be established
+
+### Step 7: Access Admin Interfaces
+
+**Keycloak Admin Console:**
+- URL: http://localhost:8080/admin
+- Login: admin/admin
+
+**Windows AD Server (if running):**
+- RDP: `rdesktop localhost:3389` or similar RDP client
+- Login: Administrator/password (see windows-ad-server/README.md)
 
 **Pre-configured OAuth Details:**
 - **Client ID**: `ssh-pam-client`
@@ -195,10 +247,14 @@ KEYCLOAK_CLIENT_SECRET=ssh-pam-client-secret-2024-hybrid-auth-lab
 
 ## Advanced Setup
 
-### 1. Manual Docker Services Setup
+## Advanced Setup
+
+### Option 1: Docker-Only Setup (Minimal)
+
+For OAuth Device Flow testing without Windows AD:
 
 ```bash
-# Start Keycloak and Ubuntu SSHD servers
+# Start only Docker components
 docker compose up -d
 
 # Check status
@@ -214,6 +270,49 @@ docker compose logs ubuntu-sshd-client
 - OAuth client (`ssh-pam-client`) is automatically configured
 - Ubuntu container sets up SSH with OAuth PAM integration
 - Test users are created in Keycloak
+
+### Option 2: Full Hybrid Setup (Docker + Windows VM)
+
+For complete Active Directory integration:
+
+```bash
+# 1. Start Docker components first
+./build.sh
+
+# 2. Build Windows AD server
+cd windows-ad-server
+./build-vm.sh  # Takes 15-20 minutes
+
+# 3. Start Windows AD server
+./start-vm.sh
+
+# 4. Verify Windows AD is running
+./status.sh
+
+# 5. Configure Keycloak to use Windows AD
+cd ..
+./setup-ad-ldap.sh
+```
+
+### Windows AD Server Details
+
+**Build Process:**
+- Downloads Windows Server 2022 evaluation ISO
+- Creates VM with Packer automation
+- Installs and configures Active Directory
+- Creates test users and organizational units
+- Enables LDAP/LDAPS services
+
+**VM Specifications:**
+- OS: Windows Server 2022 Standard
+- RAM: 4GB (configurable)
+- Disk: 40GB (dynamic)
+- Network: Bridge to Docker network
+
+**Default Credentials:**
+- Administrator: See `windows-ad-server/scripts/` for password
+- Domain: HYBRID.LOCAL
+- LDAP: Enabled on ports 389/636
 
 ### 2. Start Windows AD Server (QEMU)
 
