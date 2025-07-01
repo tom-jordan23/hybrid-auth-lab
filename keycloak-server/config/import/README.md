@@ -9,7 +9,7 @@
 # 2. Select your realm
 # 3. Go to Realm Settings > Action > Export
 # 4. Save the JSON file to this directory
-# 5. Run: docker-compose restart keycloak
+# 5. Run: docker compose restart keycloak
 
 # To import realm configurations:
 # Use the config-manager.sh script:

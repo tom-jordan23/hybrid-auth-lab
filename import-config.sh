@@ -17,11 +17,11 @@ import_keycloak_config() {
     # Import custom configuration files
     if [ -d "keycloak-server/config" ]; then
         echo "Copying configuration files to Keycloak container..."
-        docker-compose cp keycloak-server/config/. keycloak:/opt/keycloak/conf/custom/ 2>/dev/null || true
+        docker compose cp keycloak-server/config/. keycloak:/opt/keycloak/conf/custom/ 2>/dev/null || true
         
         # Restart Keycloak to pick up new configurations
         echo "Restarting Keycloak to apply configurations..."
-        docker-compose restart keycloak
+        docker compose restart keycloak
         
         echo "✓ Keycloak configurations imported"
     fi
@@ -29,7 +29,7 @@ import_keycloak_config() {
     # Import realm configurations if they exist
     if [ -d "keycloak-server/config/exported/realm-export" ]; then
         echo "Importing realm configurations..."
-        docker-compose cp keycloak-server/config/exported/realm-export/. keycloak:/opt/keycloak/data/import/ 2>/dev/null || true
+        docker compose cp keycloak-server/config/exported/realm-export/. keycloak:/opt/keycloak/data/import/ 2>/dev/null || true
         echo "✓ Realm configurations copied to import directory"
         echo "Note: Restart Keycloak with --import-realm flag to import realms"
     fi
@@ -49,43 +49,43 @@ import_sshd_config() {
     # Import SSH configuration
     if [ -f "linux-client/config/sshd_config" ]; then
         echo "Importing SSH configuration..."
-        docker-compose cp linux-client/config/sshd_config ubuntu-sshd:/etc/ssh/sshd_config
+        docker compose cp linux-client/config/sshd_config ubuntu-sshd:/etc/ssh/sshd_config
         echo "✓ SSH configuration imported"
     fi
     
     # Import PAM configuration files
     if [ -d "linux-client/config/pam.d" ]; then
         echo "Importing PAM configuration..."
-        docker-compose cp linux-client/config/pam.d/. ubuntu-sshd:/etc/pam.d/
+        docker compose cp linux-client/config/pam.d/. ubuntu-sshd:/etc/pam.d/
         echo "✓ PAM configuration imported"
     fi
     
     # Import SSSD configuration
     if [ -f "linux-client/config/sssd.conf" ]; then
         echo "Importing SSSD configuration..."
-        docker-compose cp linux-client/config/sssd.conf ubuntu-sshd:/etc/sssd/sssd.conf
-        docker-compose exec ubuntu-sshd chmod 600 /etc/sssd/sssd.conf
+        docker compose cp linux-client/config/sssd.conf ubuntu-sshd:/etc/sssd/sssd.conf
+        docker compose exec ubuntu-sshd chmod 600 /etc/sssd/sssd.conf
         echo "✓ SSSD configuration imported"
     fi
     
     # Import Kerberos configuration
     if [ -f "linux-client/config/krb5.conf" ]; then
         echo "Importing Kerberos configuration..."
-        docker-compose cp linux-client/config/krb5.conf ubuntu-sshd:/etc/krb5.conf
+        docker compose cp linux-client/config/krb5.conf ubuntu-sshd:/etc/krb5.conf
         echo "✓ Kerberos configuration imported"
     fi
     
     # Import NSS configuration
     if [ -f "linux-client/config/nsswitch.conf" ]; then
         echo "Importing NSS configuration..."
-        docker-compose cp linux-client/config/nsswitch.conf ubuntu-sshd:/etc/nsswitch.conf
+        docker compose cp linux-client/config/nsswitch.conf ubuntu-sshd:/etc/nsswitch.conf
         echo "✓ NSS configuration imported"
     fi
     
     # Restart services to pick up new configurations
     echo "Restarting SSH and SSSD services..."
-    docker-compose exec ubuntu-sshd service ssh restart 2>/dev/null || true
-    docker-compose exec ubuntu-sshd service sssd restart 2>/dev/null || true
+    docker compose exec ubuntu-sshd service ssh restart 2>/dev/null || true
+    docker compose exec ubuntu-sshd service sssd restart 2>/dev/null || true
     
     echo "✓ SSH/PAM configurations imported and services restarted"
 }
@@ -97,7 +97,7 @@ validate_configs() {
     
     # Test SSH configuration
     echo "Testing SSH configuration..."
-    if docker-compose exec ubuntu-sshd sshd -t 2>/dev/null; then
+    if docker compose exec ubuntu-sshd sshd -t 2>/dev/null; then
         echo "✓ SSH configuration is valid"
     else
         echo "✗ SSH configuration has errors"
@@ -105,7 +105,7 @@ validate_configs() {
     
     # Test SSSD configuration
     echo "Testing SSSD configuration..."
-    if docker-compose exec ubuntu-sshd sssd --genconf-section=domain 2>/dev/null; then
+    if docker compose exec ubuntu-sshd sssd --genconf-section=domain 2>/dev/null; then
         echo "✓ SSSD configuration appears valid"
     else
         echo "! SSSD configuration may have issues"

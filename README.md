@@ -47,10 +47,10 @@ For detailed step-by-step setup, continue with the sections below.
 
 ```bash
 # Start Keycloak and Ubuntu SSHD servers
-docker-compose up -d
+docker compose up -d
 
 # Check status
-docker-compose ps
+docker compose ps
 ```
 
 ### 2. Start Windows AD Server (QEMU)
@@ -271,36 +271,36 @@ sudo firewall-cmd --reload
 
 ```bash
 # Rebuild specific service
-docker-compose build ubuntu-sshd
-docker-compose up -d ubuntu-sshd
+docker compose build ubuntu-sshd
+docker compose up -d ubuntu-sshd
 
 # Rebuild all
-docker-compose build
-docker-compose up -d
+docker compose build
+docker compose up -d
 ```
 
 ### Logs
 
 ```bash
 # View all logs
-docker-compose logs -f
+docker compose logs -f
 
 # View specific service logs
-docker-compose logs -f keycloak
-docker-compose logs -f ubuntu-sshd
+docker compose logs -f keycloak
+docker compose logs -f ubuntu-sshd
 ```
 
 ### Cleanup
 
 ```bash
 # Stop services
-docker-compose down
+docker compose down
 
 # Remove volumes (careful - this deletes data!)
-docker-compose down -v
+docker compose down -v
 
 # Remove images
-docker-compose down --rmi all
+docker compose down --rmi all
 ```
 
 ## Troubleshooting

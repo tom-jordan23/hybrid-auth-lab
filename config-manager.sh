@@ -79,9 +79,9 @@ backup_configs() {
     # Create backup manifest
     cat > "$backup_dir/manifest.txt" << EOF
 Backup created: $(date)
-Docker Compose version: $(docker-compose --version)
-Keycloak container: $(docker-compose ps -q keycloak 2>/dev/null || echo "not running")
-Ubuntu SSHD container: $(docker-compose ps -q ubuntu-sshd 2>/dev/null || echo "not running")
+Docker Compose version: $(docker compose --version)
+Keycloak container: $(docker compose ps -q keycloak 2>/dev/null || echo "not running")
+Ubuntu SSHD container: $(docker compose ps -q ubuntu-sshd 2>/dev/null || echo "not running")
 EOF
     
     echo "✓ Backup created: $backup_dir"
@@ -130,7 +130,7 @@ watch_configs() {
     
     while true; do
         # Check if containers are running
-        if docker-compose ps | grep -q "Up"; then
+        if docker compose ps | grep -q "Up"; then
             # Export configurations silently
             ./export-config.sh all > /dev/null 2>&1
             
