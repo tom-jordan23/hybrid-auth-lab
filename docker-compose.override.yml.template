@@ -2,8 +2,6 @@
 # Copy this file to docker-compose.override.yml and modify as needed
 # This file is ignored by git (.gitignore)
 
-version: '3.8'
-
 services:
   keycloak:
     environment:

@@ -1,48 +1,130 @@
-# OAuth/PAM Setup Guide for Ubuntu Client
+# Tutorial: OAuth/PAM Integration for SSH Authentication
 
-This guide walks through configuring PAM and SSSD on the Ubuntu client to authenticate users via OAuth Device Flow with Keycloak.
+This tutorial demonstrates how to implement OAuth 2.0 Device Flow authentication for SSH using Linux PAM (Pluggable Authentication Modules). You'll learn how to bridge modern identity providers with traditional Linux services.
 
-## Overview
+## What You'll Build
 
-The Ubuntu client will be configured to:
-1. Use SSSD with OAuth/OIDC provider (Keycloak)
-2. Authenticate SSH logins via OAuth Device Flow
-3. Create user sessions for OAuth-authenticated users
-4. Map OAuth user attributes to local user accounts
+By the end of this tutorial, you'll have:
+- SSH authentication that uses OAuth instead of local passwords
+- Users who authenticate via browser-based OAuth flow
+- Integration between Keycloak (OAuth server) and Linux PAM
+- A foundation for modernizing traditional Linux authentication
 
-## Prerequisites
+## Learning Objectives
 
-Before starting, ensure:
-- Keycloak is running and configured with a realm (see `keycloak-setup-guide.md`)
-- A Keycloak client for SSH/PAM authentication is created
-- The Ubuntu client container is running
-- Network connectivity between client and Keycloak
+- Understand how PAM enables pluggable authentication
+- Learn OAuth 2.0 Device Flow for headless authentication
+- Implement custom PAM modules for OAuth integration
+- Configure SSH to use OAuth authentication
+- Debug and troubleshoot OAuth/PAM integration
 
-## Step 1: Install Required Packages
+## Tutorial Architecture
 
-Connect to the Ubuntu client container and install necessary packages:
+```
+SSH User Login
+       ↓
+   SSH Server (sshd)
+       ↓
+   PAM Authentication Stack
+       ↓
+   Custom OAuth PAM Module
+       ↓
+   OAuth Device Flow
+       ↓ 
+   Keycloak (OAuth Server)
+       ↓
+   User Browser Authentication
+       ↓
+   SSH Session Granted
+```
+
+## Understanding Linux PAM
+
+PAM (Pluggable Authentication Modules) allows you to configure how authentication works without modifying applications like SSH.
+
+### PAM Configuration Structure
 
 ```bash
-# Connect to the Ubuntu client container
-docker exec -it ubuntu-client bash
-
-# Update package list
-apt update
-
-# Install SSSD and OAuth support packages
-apt install -y \
-    sssd \
-    sssd-tools \
-    sssd-dbus \
-    libpam-sss \
-    libnss-sss \
-    libpam-modules \
-    libpam-runtime
-
-# Install OAuth/OIDC PAM module (if available)
-# Note: This may require building from source or using third-party packages
-apt install -y libpam-oauth2 || echo "OAuth PAM module not available in repos"
+# /etc/pam.d/sshd - SSH PAM configuration
+auth    required    pam_env.so
+auth    required    pam_exec.so    /opt/auth/oauth_auth.sh
+auth    include     common-auth
+account include     common-account
+session include     common-session
 ```
+
+**PAM Module Types:**
+- `auth`: Authentication (verify user identity)
+- `account`: Account validation (user allowed to login?)
+- `session`: Session management (setup user environment)
+- `password`: Password changing
+
+**PAM Control Flags:**
+- `required`: Must succeed, but continue processing
+- `requisite`: Must succeed, stop if fails
+- `sufficient`: If succeeds, skip remaining modules
+- `optional`: Success/failure doesn't affect result
+
+## Tutorial Prerequisites
+
+This tutorial assumes:
+- Basic understanding of Linux authentication
+- Familiarity with SSH and command line
+- Understanding of OAuth 2.0 concepts (optional but helpful)
+
+**Lab Environment:**
+- Keycloak OAuth server running on port 8080
+- Ubuntu SSH server with PAM support
+- Pre-configured OAuth client credentials
+
+## Step 1: Understanding the Existing Setup
+
+Let's explore what's already configured in the tutorial environment:
+
+```bash
+# Connect to the Ubuntu SSH container
+docker exec -it ubuntu-sshd-client bash
+
+# Examine the current PAM configuration for SSH
+cat /etc/pam.d/sshd
+
+# Look at the OAuth configuration
+cat /etc/default/oauth-auth
+
+# Check the OAuth authentication script
+ls -la /opt/auth/oauth_auth.sh
+```
+
+**What you'll see:**
+- SSH PAM configuration that includes OAuth module
+- OAuth client credentials and endpoints
+- Custom authentication script for device flow
+
+## Step 2: How OAuth PAM Integration Works
+
+### The Authentication Flow
+
+1. **User initiates SSH**: `ssh testuser@localhost -p 2222`
+2. **SSH calls PAM**: sshd consults `/etc/pam.d/sshd`
+3. **PAM calls OAuth script**: `pam_exec.so` executes `/opt/auth/oauth_auth.sh`
+4. **Script requests device code**: Makes API call to Keycloak
+5. **User sees device code**: Script displays code and verification URL
+6. **User completes browser auth**: Visits URL, enters code, authenticates
+7. **Script polls for token**: Checks if user completed authentication
+8. **SSH session granted**: On successful OAuth, SSH access is granted
+
+### Examining the OAuth Script
+
+```bash
+# View the OAuth authentication script
+cat /opt/auth/oauth_auth.sh | head -50
+```
+
+**Key functions in the script:**
+- `check_dependencies()`: Ensures curl and jq are available
+- `request_device_authorization()`: Initiates OAuth device flow
+- `poll_for_token()`: Waits for user to complete authentication
+- `validate_user()`: Checks if OAuth user matches SSH user
 
 ## Step 2: Configure Keycloak Client for SSH/PAM
 

@@ -1,16 +1,38 @@
-# Hybrid Authentication Lab
+# OAuth Device Flow Tutorial: Modernizing Linux Authentication
 
-This project sets up a hybrid authentication environment with:
-- **Keycloak Server** (Docker) - Identity and Access Management
-- **Ubuntu SSHD Client** (Docker) - Linux client for testing authentication
-- **Windows AD Server** (QEMU) - Active Directory Domain Controller
+> **New to OAuth Device Flow?** Start with the **[Getting Started Guide](GETTING-STARTED.md)** for a quick introduction.
 
-## Architecture
+This project demonstrates how to implement **OAuth 2.0 Device Flow** authentication for traditional Linux services like SSH. Instead of relying solely on local user accounts or complex Kerberos setups, this tutorial shows how to integrate modern federated authentication with existing Linux infrastructure.
+
+## What You'll Learn
+
+- How OAuth 2.0 Device Flow works for device authentication
+- Integrating OAuth with Linux PAM (Pluggable Authentication Modules)
+- Bridging traditional services (SSH) with modern identity providers
+- Setting up Keycloak as an OAuth 2.0 Authorization Server
+- Creating a hybrid authentication environment that can federate with Active Directory
+
+## The Problem This Solves
+
+Traditional Linux authentication often relies on:
+- Local `/etc/passwd` accounts (not centralized)
+- LDAP/AD with Kerberos (complex, requires domain joining)
+- SSH keys (difficult to manage at scale)
+
+This tutorial demonstrates a modern approach using **OAuth Device Flow** that provides:
+- ✅ Centralized identity management
+- ✅ No complex domain joining required
+- ✅ Works with existing SSH infrastructure
+- ✅ Supports multi-factor authentication
+- ✅ Integration with modern identity providers
+- ✅ Audit trails and session management
+
+## Architecture Overview
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Keycloak      │    │  Ubuntu SSHD    │    │  Windows AD     │
-│   (Docker)      │    │  (Docker)       │    │  (QEMU VM)      │
+│ (OAuth Server)  │    │ (SSH + OAuth)   │    │ (User Source)   │
 │   Port: 8080    │    │  Port: 2222     │    │  Port: 389/636  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
@@ -22,28 +44,158 @@ This project sets up a hybrid authentication environment with:
                     └─────────────────┘
 ```
 
-## Quick Start
+**Components:**
+- **Keycloak Server** (Docker) - OAuth 2.0 Authorization Server with OIDC support
+- **Ubuntu SSHD Client** (Docker) - Linux server with OAuth-enabled PAM authentication
+- **Windows AD Server** (QEMU) - Traditional Active Directory for user federation
 
-For a rapid setup of OAuth/PAM authentication:
+## Understanding OAuth Device Flow
 
-```bash
-# 1. Start the lab environment
-./build.sh
+The **OAuth 2.0 Device Flow** (RFC 8628) is designed for devices that either lack a browser or have limited input capabilities. It's perfect for SSH authentication because:
 
-# 2. Set up OAuth/PAM authentication (optional: set client secret)
-export KEYCLOAK_CLIENT_SECRET="your_client_secret_from_keycloak"
-./quick-start-oauth.sh setup
+1. **Device Request**: SSH server requests a device code from the OAuth server
+2. **User Code**: User receives a short code to enter in a browser
+3. **Browser Authentication**: User completes authentication in a full browser experience
+4. **Token Polling**: SSH server polls for the authentication result
+5. **Access Granted**: Upon successful authentication, SSH access is granted
 
-# 3. Test SSH login with OAuth
-ssh testuser@localhost -p 2222
-# Follow device flow instructions in browser
+### Traditional SSH Login Flow
+```
+User → SSH Client → SSH Server → /etc/passwd → ✅/❌
 ```
 
-For detailed step-by-step setup, continue with the sections below.
+### OAuth Device Flow SSH Login
+```
+User → SSH Client → SSH Server → OAuth Server → Browser Auth → ✅/❌
+                     ↓
+              (PAM OAuth Module)
+```
 
-## Detailed Setup
+This approach provides:
+- **Better Security**: MFA, conditional access, session management
+- **Better UX**: Rich browser-based authentication experience
+- **Better Management**: Centralized user and policy management
 
-### 1. Start Docker Services
+## Quick Start Tutorial
+
+### Step 1: Start the OAuth Environment
+```bash
+# Clone and start the lab environment
+git clone <this-repo>
+cd hybrid-auth-lab
+./build.sh
+```
+
+This starts:
+- Keycloak OAuth server with pre-configured realm
+- Ubuntu SSH server with OAuth PAM integration
+- Pre-configured OAuth client with device flow enabled
+
+### Step 2: Understanding the Components
+```bash
+# Test OAuth integration
+./test-oauth-integration.sh
+```
+
+This script demonstrates:
+- OAuth client authentication with Keycloak
+- Device Flow endpoint functionality
+- PAM module configuration
+- End-to-end connectivity
+
+### Step 3: Experience OAuth Device Flow
+```bash
+# Interactive device flow demo
+./demo-oauth-device-flow.sh
+```
+
+This will:
+1. Request a device code from Keycloak
+2. Display a user code and verification URL
+3. Open your browser to the verification page
+4. Wait for you to authenticate
+5. Show the resulting OAuth tokens
+
+### Step 4: Test SSH with OAuth
+```bash
+# Try SSH login (will trigger OAuth flow)
+ssh testuser@localhost -p 2222
+```
+
+When prompted:
+1. Note the device code and URL displayed
+2. Open the URL in your browser
+3. Enter the device code
+4. Authenticate with: `testuser` / `testpass`
+5. SSH session will be established
+
+**Pre-configured OAuth Details:**
+- **Client ID**: `ssh-pam-client`
+- **Client Secret**: `ssh-pam-client-secret-2024-hybrid-auth-lab`
+- **Test Users**: admin/admin, testuser/testpass
+
+## Deep Dive: How It Works
+
+### PAM Integration Architecture
+
+The OAuth integration works through Linux PAM (Pluggable Authentication Modules):
+
+```
+SSH Login Request
+       ↓
+   PAM Auth Stack
+       ↓
+  OAuth PAM Module (/opt/auth/oauth_auth.sh)
+       ↓
+  Device Flow Request → Keycloak
+       ↓
+  User Code Generation
+       ↓
+  Browser Authentication (User)
+       ↓
+  Token Validation
+       ↓
+  SSH Access Granted/Denied
+```
+
+**Key Files:**
+- `/etc/pam.d/sshd` - PAM configuration for SSH
+- `/opt/auth/oauth_auth.sh` - OAuth Device Flow script
+- `/etc/default/oauth-auth` - OAuth client configuration
+
+### OAuth Client Configuration
+
+The tutorial includes a pre-configured Keycloak OAuth client:
+
+```json
+{
+  "clientId": "ssh-pam-client",
+  "secret": "ssh-pam-client-secret-2024-hybrid-auth-lab",
+  "attributes": {
+    "oauth2.device.authorization.grant.enabled": "true"
+  }
+}
+```
+
+**Why Device Flow?**
+- SSH servers often don't have browsers
+- Users can authenticate on their primary device
+- Supports rich authentication flows (MFA, SSO, etc.)
+- No need to embed credentials in scripts
+
+### Environment Configuration
+
+```bash
+# OAuth client settings (in SSH container)
+KEYCLOAK_URL=http://keycloak:8080
+KEYCLOAK_REALM=hybrid-auth
+KEYCLOAK_CLIENT_ID=ssh-pam-client
+KEYCLOAK_CLIENT_SECRET=ssh-pam-client-secret-2024-hybrid-auth-lab
+```
+
+## Advanced Setup
+
+### 1. Manual Docker Services Setup
 
 ```bash
 # Start Keycloak and Ubuntu SSHD servers
@@ -51,7 +203,17 @@ docker compose up -d
 
 # Check status
 docker compose ps
+
+# View logs to understand startup process
+docker compose logs keycloak-server
+docker compose logs ubuntu-sshd-client
 ```
+
+**What happens during startup:**
+- Keycloak imports the pre-configured realm (`hybrid-auth`)
+- OAuth client (`ssh-pam-client`) is automatically configured
+- Ubuntu container sets up SSH with OAuth PAM integration
+- Test users are created in Keycloak
 
 ### 2. Start Windows AD Server (QEMU)
 
@@ -112,17 +274,92 @@ packer build windows-2022-ad-ldif.json
 - Configured via Packer templates and answer files
 - LDIF test users included
 
-## Configuration Management
+## Tutorial: Configuration Management
 
-This project provides powerful tools for managing configurations between your git repository and running containers. This allows you to easily develop, test, and version control your Keycloak realm configurations and SSH/PAM settings.
+Understanding how to manage OAuth and PAM configurations is crucial for implementing this in production environments.
 
-### Configuration Workflow
+### Configuration Architecture
 
-1. **Start the services**: `./build.sh`
-2. **Configure via UI/SSH**: Make changes in Keycloak admin console or SSH into the Ubuntu container
-3. **Export configurations**: `./config-manager.sh export` 
-4. **Review and commit**: Check the exported configs and commit to git
-5. **Import to other environments**: `./config-manager.sh import`
+The tutorial demonstrates a development workflow where configurations can be:
+1. **Developed** in running containers (live testing)
+2. **Exported** to git repository (version control)
+3. **Imported** to other environments (deployment)
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Git Repo      │    │  Running        │    │  New Environment│
+│  (Configs)      │ ←→ │  Containers     │ → │  (Deploy)       │
+│                 │    │  (Development)  │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### OAuth Configuration Files
+
+**Keycloak Realm Configuration:**
+- File: `keycloak-server/config/realm-hybrid-auth.json`
+- Contains: OAuth clients, users, authentication flows, mappers
+- Management: Export from Keycloak admin console or via API
+
+**SSH/PAM OAuth Configuration:**
+- Files: `linux-client/config/`
+- Contains: PAM rules, OAuth client settings, SSSD configuration
+- Management: Direct file editing or container runtime changes
+
+### Configuration Workflow Tutorial
+
+**Step 1: Start with base configuration**
+```bash
+./build.sh  # Starts with pre-configured OAuth setup
+```
+
+**Step 2: Make changes via Keycloak Admin Console**
+```bash
+# Access Keycloak admin console
+open http://localhost:8080/admin
+# Login: admin/admin
+# Navigate to 'hybrid-auth' realm
+# Modify OAuth client settings, add users, etc.
+```
+
+**Step 3: Export changes to git**
+```bash
+# Export all configurations
+./config-manager.sh export
+
+# Or export specific services
+./config-manager.sh export keycloak
+./config-manager.sh export sshd
+```
+
+**Step 4: Version control your changes**
+```bash
+git add .
+git commit -m "Updated OAuth client configuration"
+```
+
+**Step 5: Deploy to other environments**
+```bash
+# In a new environment
+./build.sh
+./config-manager.sh import  # Applies your custom configurations
+```
+
+### Interactive Configuration Management
+
+```bash
+# Open configuration files for editing
+./config-manager.sh edit keycloak  # Opens keycloak-server/config/
+./config-manager.sh edit sshd      # Opens linux-client/config/
+
+# Monitor for changes and auto-export
+./config-manager.sh watch
+
+# Create backups before major changes
+./config-manager.sh backup
+
+# Restore from backup if needed
+./config-manager.sh restore backups/20240701_101530
+```
 
 ### Quick Commands
 
@@ -391,7 +628,7 @@ Configure the Ubuntu client to authenticate users via OAuth Device Flow with Key
 
 ```bash
 # Connect to the Ubuntu client container
-docker exec -it ubuntu-client bash
+docker exec -it ubuntu-sshd-client bash
 
 # Set up OAuth/PAM authentication
 export KEYCLOAK_CLIENT_SECRET="your_client_secret_from_step_3"
@@ -442,3 +679,103 @@ The authentication flow works as follows:
 7. User is logged into Ubuntu client
 
 ## 8. Troubleshooting
+
+## Understanding the OAuth Configuration
+
+### OAuth Client Setup in Keycloak
+
+The tutorial comes with a pre-configured OAuth client that demonstrates best practices:
+
+**Client Configuration:**
+- **Client ID**: `ssh-pam-client`
+- **Client Secret**: `ssh-pam-client-secret-2024-hybrid-auth-lab`
+- **Grant Types**: Authorization Code, Device Flow
+- **Realm**: `hybrid-auth`
+
+**Device Flow Specific Settings:**
+```json
+{
+  "attributes": {
+    "oauth2.device.authorization.grant.enabled": "true",
+    "oauth2.device.code.lifespan": "600",
+    "oauth2.device.polling.interval": "5"
+  }
+}
+```
+
+### Testing OAuth Device Flow Manually
+
+Understanding the OAuth flow helps troubleshoot and customize the integration:
+
+```bash
+# Step 1: Request device authorization
+curl -X POST -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=ssh-pam-client&client_secret=ssh-pam-client-secret-2024-hybrid-auth-lab" \
+  "http://localhost:8080/realms/hybrid-auth/protocol/openid-connect/auth/device"
+
+# Response contains:
+# - device_code: for polling
+# - user_code: for user entry
+# - verification_uri: where user authenticates
+# - expires_in: code lifetime
+# - interval: polling frequency
+```
+
+```bash
+# Step 2: User visits verification_uri and enters user_code
+# Step 3: Poll for token
+curl -X POST -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code=<DEVICE_CODE>&client_id=ssh-pam-client&client_secret=ssh-pam-client-secret-2024-hybrid-auth-lab" \
+  "http://localhost:8080/realms/hybrid-auth/protocol/openid-connect/token"
+```
+
+### Comprehensive OAuth Testing
+
+```bash
+# Automated OAuth integration test
+./test-oauth-integration.sh
+```
+
+This script validates:
+- ✅ Keycloak accessibility
+- ✅ OAuth client authentication
+- ✅ Device flow endpoint functionality
+- ✅ SSH container OAuth configuration
+- ✅ PAM integration scripts
+
+### Pre-configured Users
+
+- **Admin**: admin/admin (Keycloak admin user)
+- **Test User**: testuser/testpass (for OAuth testing)
+
+For detailed OAuth configuration information, see: [`docs/keycloak-client-secret-config.md`](docs/keycloak-client-secret-config.md)
+
+## Tutorial Documentation
+
+This project includes comprehensive tutorials and guides:
+
+### Core Tutorials
+- **[OAuth Device Flow Tutorial](docs/oauth-device-flow-tutorial.md)** - Complete guide to OAuth Device Flow for Linux services
+- **[OAuth/PAM Setup Guide](docs/oauth-pam-setup-guide.md)** - Step-by-step PAM integration tutorial
+- **[Keycloak Setup Guide](docs/keycloak-setup-guide.md)** - Configuring Keycloak for OAuth Device Flow
+
+### Reference Documentation
+- **[OAuth/PAM Features](docs/oauth-pam-features.md)** - Feature overview and capabilities
+- **[Client Secret Configuration](docs/keycloak-client-secret-config.md)** - OAuth client setup details
+
+### Learning Path
+
+**For OAuth/PAM Beginners:**
+1. Start with [OAuth Device Flow Tutorial](docs/oauth-device-flow-tutorial.md)
+2. Follow [OAuth/PAM Setup Guide](docs/oauth-pam-setup-guide.md)
+3. Experiment with the tutorial environment
+
+**For Integration Developers:**
+1. Review [Keycloak Setup Guide](docs/keycloak-setup-guide.md)
+2. Study [Client Secret Configuration](docs/keycloak-client-secret-config.md)
+3. Examine the configuration management workflow
+
+**For Production Deployment:**
+1. Understand all tutorials above
+2. Review security considerations in each guide
+3. Plan your deployment strategy using the tutorial as a foundation

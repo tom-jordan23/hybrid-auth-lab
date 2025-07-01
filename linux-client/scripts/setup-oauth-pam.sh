@@ -109,7 +109,7 @@ UsePAM yes
 PasswordAuthentication yes
 ChallengeResponseAuthentication yes
 KbdInteractiveAuthentication yes
-AuthenticationMethods keyboard-interactive
+AuthenticationMethods password keyboard-interactive
 PubkeyAuthentication no
 PermitRootLogin no
 UseDNS no
@@ -223,9 +223,15 @@ EOF
     log_success "User management utilities created"
 }
 
-# Setup systemd environment
+# Setup systemd environment (skip if systemd not available)
 setup_systemd_environment() {
     log_info "Setting up systemd environment..."
+    
+    # Check if systemd is available
+    if ! systemctl --version >/dev/null 2>&1; then
+        log_warning "systemd not available - skipping systemd configuration"
+        return 0
+    fi
     
     # Create systemd environment file
     mkdir -p /etc/systemd/system/ssh.service.d
@@ -281,6 +287,18 @@ validate_setup() {
 # Start services
 start_services() {
     log_info "Starting services..."
+    
+    # Check if systemd is available
+    if ! systemctl --version >/dev/null 2>&1; then
+        log_warning "systemd not available - manually restarting SSH"
+        # Try to restart SSH manually
+        if command -v service >/dev/null 2>&1; then
+            service ssh restart || log_warning "Failed to restart SSH service"
+        else
+            log_warning "Cannot restart SSH - no service manager available"
+        fi
+        return 0
+    fi
     
     # Restart SSH service
     systemctl restart ssh

@@ -37,7 +37,7 @@ check_containers() {
         exit 1
     fi
     
-    if ! docker ps | grep -q ubuntu-client; then
+    if ! docker ps | grep -q ubuntu-sshd-client; then
         log_error "Ubuntu client container is not running. Please run './build.sh' first."
         exit 1
     fi
@@ -84,7 +84,7 @@ setup_oauth_pam() {
     fi
     
     # Execute setup script in container
-    docker exec ubuntu-client bash -c "
+    docker exec ubuntu-sshd-client bash -c "
         export KEYCLOAK_CLIENT_SECRET='$CLIENT_SECRET'
         /opt/scripts/setup-oauth-pam.sh setup
     "
@@ -96,7 +96,7 @@ setup_oauth_pam() {
 create_test_users() {
     log_info "Creating test OAuth users..."
     
-    docker exec ubuntu-client bash -c "
+    docker exec ubuntu-sshd-client bash -c "
         /opt/auth/manage_oauth_users.sh create john.doe 'John Doe' 'john.doe@example.com'
         /opt/auth/manage_oauth_users.sh create jane.smith 'Jane Smith' 'jane.smith@example.com'
         /opt/auth/manage_oauth_users.sh create testuser 'Test User' 'testuser@example.com'
@@ -154,9 +154,9 @@ show_setup_info() {
     echo "   - Enable OAuth Device Flow"
     echo ""
     echo "2. Update client secret (if not provided):"
-    echo "   docker exec ubuntu-client bash -c \\"
+    echo "   docker exec ubuntu-sshd-client bash -c \\"
     echo "     \"echo 'KEYCLOAK_CLIENT_SECRET=your_actual_secret' >> /etc/default/oauth-auth\""
-    echo "   docker exec ubuntu-client systemctl restart ssh"
+    echo "   docker exec ubuntu-sshd-client systemctl restart ssh"
     echo ""
     echo "3. Test SSH login with OAuth:"
     echo "   ssh john.doe@localhost -p 2222"
@@ -166,8 +166,8 @@ show_setup_info() {
     echo "   KEYCLOAK_CLIENT_SECRET=your_secret ./examples/test-oauth-device-flow.sh testuser"
     echo ""
     echo "Useful commands:"
-    echo "  - docker exec ubuntu-client oauth-users    # List OAuth users"
-    echo "  - docker exec ubuntu-client oauth-create   # Create OAuth user"
+    echo "  - docker exec ubuntu-sshd-client oauth-users    # List OAuth users"
+    echo "  - docker exec ubuntu-sshd-client oauth-create   # Create OAuth user"
     echo "  - ./network-info.sh                        # Show network information"
     echo "  - ./export-config.sh                       # Export configurations"
     echo ""
@@ -177,10 +177,10 @@ show_setup_info() {
         log_warning "IMPORTANT: Remember to set the Keycloak client secret!"
         echo "1. Get the secret from Keycloak admin console"
         echo "2. Update it in the container:"
-        echo "   docker exec ubuntu-client bash -c \\"
+        echo "   docker exec ubuntu-sshd-client bash -c \\"
         echo "     \"sed -i 's/KEYCLOAK_CLIENT_SECRET=.*/KEYCLOAK_CLIENT_SECRET=your_actual_secret/' /etc/default/oauth-auth\""
         echo "3. Restart SSH service:"
-        echo "   docker exec ubuntu-client systemctl restart ssh"
+        echo "   docker exec ubuntu-sshd-client systemctl restart ssh"
     fi
 }
 
@@ -188,7 +188,7 @@ show_setup_info() {
 restore_setup() {
     log_info "Restoring original configuration..."
     
-    docker exec ubuntu-client bash -c "
+    docker exec ubuntu-sshd-client bash -c "
         /opt/scripts/setup-oauth-pam.sh restore
     " || log_warning "Restore command failed (container might not be running)"
     
