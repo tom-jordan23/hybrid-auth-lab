@@ -23,6 +23,10 @@ show_help() {
     echo "  $0 import sshd       - Import SSH/PAM config"
     echo "  $0 edit keycloak     - Open Keycloak config directory"
     echo "  $0 watch             - Auto-export when configs change"
+    echo ""
+    echo "Quick Status Commands:"
+    echo "  ./status.sh          - Quick lab status overview"
+    echo "  ./check-status.sh    - Detailed component status"
 }
 
 # Function to open configuration directory for editing

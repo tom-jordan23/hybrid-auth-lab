@@ -53,7 +53,8 @@ cd ..
 ./build.sh                  # Automatically configures Keycloak LDAP federation
 
 # 4. Verify complete setup
-./check-status.sh
+./status.sh                 # Quick overview
+./check-status.sh           # Detailed if needed
 
 # 5. Test hybrid authentication with Active Directory user
 ssh Administrator@localhost -p 2222

@@ -139,10 +139,30 @@ cd ..
 
 **Build time:** 20-30 minutes (downloads Windows Server ISO)
 
-### Step 3: Test Active Directory Authentication
+### Step 3: Verify Everything is Running
 ```bash
-# Verify complete status
+# Quick status overview
+./status.sh
+
+# Comprehensive status check (if needed)
 ./check-status.sh
+
+# Expected quick status:
+# ✅ Docker Components: Running
+# ✅ Keycloak OAuth Server: Accessible  
+# ✅ SSH Server (OAuth): Listening
+# ✅ Windows AD Server: Running + LDAP Ready
+# 🎉 Overall Status: READY FOR TESTING
+```
+
+### Step 4: Test Active Directory Authentication
+```bash
+# Test OAuth Device Flow with AD authentication
+./demo-oauth-device-flow.sh
+
+# Test SSH with Active Directory user
+ssh Administrator@localhost -p 2222
+```
 
 # Test OAuth Device Flow with AD authentication
 ./demo-oauth-device-flow.sh

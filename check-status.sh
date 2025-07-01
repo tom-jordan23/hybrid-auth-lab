@@ -96,17 +96,17 @@ if [ -d "windows-ad-server" ]; then
             log_success "Windows AD VM is running (PID: $VM_PID)"
             
             # Check AD ports (these are required for Keycloak LDAP federation)
-            if nc -z localhost 389 2>/dev/null; then
-                log_success "Active Directory LDAP (389) is accessible - REQUIRED for OAuth"
+            if nc -z localhost 1389 2>/dev/null; then
+                log_success "Active Directory LDAP (1389) is accessible - REQUIRED for OAuth"
             else
-                log_error "LDAP port 389 not accessible - Keycloak cannot authenticate users!"
+                log_error "LDAP port 1389 not accessible - Keycloak cannot authenticate users!"
                 echo "         AD may still be starting. Wait a few minutes and try again."
             fi
             
-            if nc -z localhost 636 2>/dev/null; then
-                log_success "Active Directory LDAPS (636) is accessible"
+            if nc -z localhost 1636 2>/dev/null; then
+                log_success "Active Directory LDAPS (1636) is accessible"
             else
-                log_warning "LDAPS port 636 not accessible"
+                log_warning "LDAPS port 1636 not accessible"
             fi
             
             if nc -z localhost 3389 2>/dev/null; then

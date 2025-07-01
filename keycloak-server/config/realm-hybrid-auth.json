@@ -733,7 +733,7 @@
         "providerId": "ldap",
         "subComponents": {},
         "config": {
-          "connectionUrl": ["ldap://windows-ad:389"],
+          "connectionUrl": ["ldap://172.20.0.1:1389"],
           "usersDn": ["CN=Users,DC=hybrid,DC=local"],
           "bindCredential": ["AdminPassword123!"],
           "bindDn": ["CN=Administrator,CN=Users,DC=hybrid,DC=local"],

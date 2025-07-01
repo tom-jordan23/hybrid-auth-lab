@@ -5,7 +5,7 @@
 set -euo pipefail
 
 # Configuration
-REALM_FILE="realm-hybrid-auth.json"
+REALM_FILE="keycloak-server/config/realm-hybrid-auth.json"
 CLIENT_SECRET="ssh-pam-client-secret-2024-hybrid-auth-lab"
 
 # Colors for output
