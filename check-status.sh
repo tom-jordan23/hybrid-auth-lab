@@ -17,6 +17,7 @@ log_warning() { echo -e "${YELLOW}[WARNING]${NC} $*"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
 echo "=== Hybrid Authentication Lab Status Check ==="
+echo "Verifying OAuth + Active Directory integration"
 echo ""
 
 # Check Docker components
@@ -80,45 +81,53 @@ fi
 
 echo ""
 
-# Check Windows AD server
-log_info "Checking Windows AD server..."
+# Check Windows AD server (REQUIRED)
+log_info "Checking Windows Active Directory server (required)..."
 
 if [ -d "windows-ad-server" ]; then
     cd windows-ad-server
     
     if [ -f "windows_2022_like_2019-qemu/WindowsServer2022-Like2019" ]; then
-        log_success "Windows VM disk file exists"
+        log_success "Windows AD VM disk file exists"
         
         # Check if VM is running
         VM_PID=$(pgrep -f "WindowsServer2022-Like2019" || echo "")
         if [ -n "$VM_PID" ]; then
-            log_success "Windows VM is running (PID: $VM_PID)"
+            log_success "Windows AD VM is running (PID: $VM_PID)"
             
-            # Check AD ports
+            # Check AD ports (these are required for Keycloak LDAP federation)
             if nc -z localhost 389 2>/dev/null; then
-                log_success "Active Directory LDAP (389) is accessible"
+                log_success "Active Directory LDAP (389) is accessible - REQUIRED for OAuth"
             else
-                log_warning "LDAP port 389 not accessible (AD may still be starting)"
+                log_error "LDAP port 389 not accessible - Keycloak cannot authenticate users!"
+                echo "         AD may still be starting. Wait a few minutes and try again."
+            fi
+            
+            if nc -z localhost 636 2>/dev/null; then
+                log_success "Active Directory LDAPS (636) is accessible"
+            else
+                log_warning "LDAPS port 636 not accessible"
             fi
             
             if nc -z localhost 3389 2>/dev/null; then
-                log_success "RDP (3389) is accessible"
+                log_success "RDP (3389) is accessible for AD management"
             else
                 log_warning "RDP port 3389 not accessible"
             fi
             
         else
-            log_warning "Windows VM is not running"
+            log_error "Windows AD VM is not running - REQUIRED for authentication!"
             echo "         To start: cd windows-ad-server && ./start-vm.sh"
         fi
     else
-        log_warning "Windows VM not built yet"
+        log_error "Windows AD VM not built yet - REQUIRED for this lab!"
         echo "         To build: cd windows-ad-server && ./build-vm.sh"
     fi
     
     cd ..
 else
-    log_error "Windows AD server directory not found"
+    log_error "Windows AD server directory not found - REQUIRED!"
+    echo "         Run: git submodule update --init --recursive"
 fi
 
 echo ""
@@ -185,35 +194,43 @@ DOCKER_OK=$(docker compose ps | grep -q "Up" && echo "true" || echo "false")
 KEYCLOAK_OK=$(curl -s --connect-timeout 5 "http://localhost:8080/realms/hybrid-auth" >/dev/null 2>&1 && echo "true" || echo "false")
 WINDOWS_BUILT=$([ -f "windows-ad-server/windows_2022_like_2019-qemu/WindowsServer2022-Like2019" ] && echo "true" || echo "false")
 WINDOWS_RUNNING=$(pgrep -f "WindowsServer2022-Like2019" >/dev/null && echo "true" || echo "false")
+LDAP_OK=$(nc -z localhost 389 2>/dev/null && echo "true" || echo "false")
+
+if [ "$DOCKER_OK" = "true" ] && [ "$KEYCLOAK_OK" = "true" ] && [ "$WINDOWS_RUNNING" = "true" ] && [ "$LDAP_OK" = "true" ]; then
+    echo -e "${GREEN}✅ Hybrid Authentication Lab: READY${NC}"
+    echo "   OAuth with Active Directory integration is working!"
+    echo "   Test SSH: ssh Administrator@localhost -p 2222"
+    echo "   Use AD credentials in OAuth browser flow"
+elif [ "$WINDOWS_BUILT" = "true" ] && [ "$WINDOWS_RUNNING" = "true" ] && [ "$LDAP_OK" = "true" ]; then
+    if [ "$DOCKER_OK" = "false" ] || [ "$KEYCLOAK_OK" = "false" ]; then
+        echo -e "${YELLOW}⚠️  Windows AD Ready, OAuth Components Not Ready${NC}"
+        echo "   Run: ./build.sh"
+    fi
+elif [ "$WINDOWS_BUILT" = "true" ] && [ "$WINDOWS_RUNNING" = "true" ]; then
+    echo -e "${YELLOW}⚠️  Windows AD Starting (LDAP not ready yet)${NC}"
+    echo "   Wait a few minutes for AD services to start"
+    echo "   Check: cd windows-ad-server && ./status.sh"
+elif [ "$WINDOWS_BUILT" = "true" ]; then
+    echo -e "${RED}❌ Windows AD Built but Not Running${NC}"
+    echo "   Start: cd windows-ad-server && ./start-vm.sh"
+else
+    echo -e "${RED}❌ Windows AD Not Built - REQUIRED for this lab${NC}"
+    echo "   Build: cd windows-ad-server && ./build-vm.sh && ./start-vm.sh"
+fi
 
 if [ "$DOCKER_OK" = "true" ] && [ "$KEYCLOAK_OK" = "true" ]; then
-    echo -e "${GREEN}✅ Docker OAuth Environment: Ready${NC}"
-    echo "   Test with: ./test-oauth-integration.sh"
-    echo "   Try SSH: ssh testuser@localhost -p 2222"
+    echo -e "${GREEN}✅ OAuth Components: Ready${NC}"
 else
-    echo -e "${RED}❌ Docker OAuth Environment: Not Ready${NC}"
+    echo -e "${RED}❌ OAuth Components: Not Ready${NC}"
     echo "   Run: ./build.sh"
 fi
 
-if [ "$WINDOWS_BUILT" = "true" ]; then
-    if [ "$WINDOWS_RUNNING" = "true" ]; then
-        echo -e "${GREEN}✅ Windows AD Environment: Running${NC}"
-        echo "   Connect via RDP: rdesktop localhost:3389"
-        echo "   LDAP available on: localhost:389"
-    else
-        echo -e "${YELLOW}⚠️  Windows AD Environment: Built but not running${NC}"
-        echo "   Start: cd windows-ad-server && ./start-vm.sh"
-    fi
-else
-    echo -e "${YELLOW}⚠️  Windows AD Environment: Not built${NC}"
-    echo "   Build: cd windows-ad-server && ./build-vm.sh"
-fi
-
 echo ""
-echo "=== Quick Start Commands ==="
-echo "  Minimal setup (Docker only): ./build.sh"
-echo "  Full setup: ./build.sh && cd windows-ad-server && ./build-vm.sh && ./start-vm.sh"
-echo "  Test OAuth: ./demo-oauth-device-flow.sh"
-echo "  Test SSH: ssh testuser@localhost -p 2222"
+echo "=== Setup Commands ==="
+echo "  Complete setup:"
+echo "    1. cd windows-ad-server && ./build-vm.sh && ./start-vm.sh && cd .."
+echo "    2. ./build.sh"
+echo "  Test OAuth + AD: ssh Administrator@localhost -p 2222"
+echo "  Test device flow: ./demo-oauth-device-flow.sh"
 echo ""
 echo "For detailed guides, see: docs/ directory or GETTING-STARTED.md"

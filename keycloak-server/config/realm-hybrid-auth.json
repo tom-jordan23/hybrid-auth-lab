@@ -227,6 +227,32 @@
             "claim.name": "given_name",
             "jsonType.label": "String"
           }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "ad-groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "LDAP_GROUPS",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "ad_groups",
+            "jsonType.label": "String",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
         }
       ],
       "defaultClientScopes": [
@@ -700,7 +726,120 @@
   "adminEventsDetailsEnabled": false,
   "identityProviders": [],
   "identityProviderMappers": [],
-  "components": {},
+  "components": {
+    "org.keycloak.storage.UserStorageProvider": [
+      {
+        "name": "Windows AD LDAP",
+        "providerId": "ldap",
+        "subComponents": {},
+        "config": {
+          "connectionUrl": ["ldap://windows-ad:389"],
+          "usersDn": ["CN=Users,DC=hybrid,DC=local"],
+          "bindCredential": ["AdminPassword123!"],
+          "bindDn": ["CN=Administrator,CN=Users,DC=hybrid,DC=local"],
+          "vendor": ["ad"],
+          "usernameLDAPAttribute": ["sAMAccountName"],
+          "rdnLDAPAttribute": ["cn"],
+          "uuidLDAPAttribute": ["objectGUID"],
+          "userObjectClasses": ["person", "organizationalPerson", "user"],
+          "connectionPooling": ["true"],
+          "pagination": ["true"],
+          "allowKerberosAuthentication": ["false"],
+          "serverPrincipal": [""],
+          "keyTab": [""],
+          "kerberosRealm": [""],
+          "debug": ["false"],
+          "useKerberosForPasswordAuthentication": ["false"],
+          "importEnabled": ["true"],
+          "enabled": ["true"],
+          "syncRegistrations": ["false"],
+          "cachePolicy": ["DEFAULT"],
+          "batchSizeForSync": ["1000"],
+          "fullSyncPeriod": ["-1"],
+          "changedSyncPeriod": ["-1"],
+          "priority": ["0"],
+          "editMode": ["READ_ONLY"],
+          "searchScope": ["1"],
+          "validatePasswordPolicy": ["false"],
+          "trustEmail": ["false"],
+          "useTruststoreSpi": ["ldapsOnly"],
+          "connectionTimeout": [""],
+          "readTimeout": [""],
+          "customUserSearchFilter": [""],
+          "customFilter": [""]
+        }
+      }
+    ],
+    "org.keycloak.storage.ldap.mappers.LDAPStorageMapper": [
+      {
+        "name": "username",
+        "providerId": "user-attribute-ldap-mapper",
+        "subComponents": {},
+        "config": {
+          "user.model.attribute": ["username"],
+          "ldap.attribute": ["sAMAccountName"],
+          "read.only": ["true"],
+          "always.read.value.from.ldap": ["false"],
+          "is.mandatory.in.ldap": ["true"]
+        }
+      },
+      {
+        "name": "first name",
+        "providerId": "user-attribute-ldap-mapper",
+        "subComponents": {},
+        "config": {
+          "user.model.attribute": ["firstName"],
+          "ldap.attribute": ["givenName"],
+          "read.only": ["true"],
+          "always.read.value.from.ldap": ["false"],
+          "is.mandatory.in.ldap": ["false"]
+        }
+      },
+      {
+        "name": "last name",
+        "providerId": "user-attribute-ldap-mapper",
+        "subComponents": {},
+        "config": {
+          "user.model.attribute": ["lastName"],
+          "ldap.attribute": ["sn"],
+          "read.only": ["true"],
+          "always.read.value.from.ldap": ["false"],
+          "is.mandatory.in.ldap": ["false"]
+        }
+      },
+      {
+        "name": "email",
+        "providerId": "user-attribute-ldap-mapper",
+        "subComponents": {},
+        "config": {
+          "user.model.attribute": ["email"],
+          "ldap.attribute": ["mail"],
+          "read.only": ["true"],
+          "always.read.value.from.ldap": ["false"],
+          "is.mandatory.in.ldap": ["false"]
+        }
+      },
+      {
+        "name": "group-ldap-mapper",
+        "providerId": "group-ldap-mapper",
+        "subComponents": {},
+        "config": {
+          "groups.dn": ["CN=Users,DC=hybrid,DC=local"],
+          "group.name.ldap.attribute": ["cn"],
+          "group.object.classes": ["group"],
+          "preserve.group.inheritance": ["true"],
+          "ignore.missing.groups": ["false"],
+          "membership.ldap.attribute": ["member"],
+          "membership.attribute.type": ["DN"],
+          "groups.ldap.filter": [""],
+          "mode": ["READ_ONLY"],
+          "user.roles.retrieve.strategy": ["LOAD_GROUPS_BY_MEMBER_ATTRIBUTE"],
+          "mapped.group.attributes": [""],
+          "drop.non.existing.groups.during.sync": ["false"]
+        }
+      }
+    ]
+  },
   "internationalizationEnabled": false,
   "supportedLocales": [],
   "authenticationFlows": [

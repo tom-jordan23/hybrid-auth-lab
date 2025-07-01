@@ -80,106 +80,96 @@ This approach provides:
 
 ### Prerequisites
 - Linux/macOS with Docker and Docker Compose
-- QEMU/KVM for Windows VM (optional but recommended for full lab)
-- At least 8GB RAM and 20GB free disk space
+- **QEMU/KVM for Windows VM** (required for Active Directory)
+- **Packer** (required for building Windows VM)
+- At least 8GB RAM and 30GB free disk space
+- CPU with virtualization support (Intel VT-x or AMD-V)
 
-### Step 1: Clone and Setup
+### Step 1: Install Prerequisites
 ```bash
-# Clone the repository
-git clone <this-repo>
+# Ubuntu/Debian
+sudo apt update
+sudo apt install docker.io docker-compose qemu-kvm qemu-system-x86 packer jq
+
+# Fedora/RHEL  
+sudo dnf install docker docker-compose qemu-kvm qemu-system-x86 packer jq
+
+# Add user to required groups
+sudo usermod -a -G docker $USER
+sudo usermod -a -G kvm $USER
+
+# Logout and login again for group changes
+```
+
+### Step 2: Clone with Submodules and Build Windows AD First
+```bash
+# Clone the repository with Windows AD server submodule
+git clone --recursive <this-repo>
 cd hybrid-auth-lab
+
+# If you already cloned without --recursive, initialize submodules:
+# git submodule update --init --recursive
 
 # Make scripts executable
 chmod +x *.sh
-```
+chmod +x windows-ad-server/*.sh
 
-### Step 2: Start Core Components (OAuth + SSH)
-```bash
-# Start Keycloak and Ubuntu SSH server
+# Build Windows AD server FIRST (required for authentication)
+cd windows-ad-server
+./build-vm.sh              # Takes 15-20 minutes
+./start-vm.sh               # Start the AD domain controller
+./status.sh                 # Verify AD is running
+cd ..
+
+# Now build OAuth components with AD integration
 ./build.sh
 ```
 
-This starts:
-- **Keycloak OAuth server** (port 8080) with pre-configured realm
-- **Ubuntu SSH server** (port 2222) with OAuth PAM integration
-- **PostgreSQL database** for Keycloak
-- **Network bridge** for container communication
+**Why Windows AD First?**
+- Keycloak needs Active Directory running to configure LDAP federation
+- AD provides the user directory and group memberships for OAuth claims
+- SSH authentication will use AD credentials via OAuth Device Flow
 
-### Step 3: Start Windows AD Server (Optional)
+**What this builds:**
+- **Keycloak OAuth server** (port 8080) with hybrid-auth realm
+- **Ubuntu SSH server** (port 2222) with OAuth PAM integration  
+- **Windows Server 2022** with Active Directory (domain: hybrid.local)
+- **LDAP Federation** between Keycloak and Active Directory
+- **OAuth Device Flow** with AD group membership claims
+
+**Build time:** 20-30 minutes (downloads Windows Server ISO)
+
+### Step 3: Test Active Directory Authentication
 ```bash
-# Build Windows 2022 AD server VM
-cd windows-ad-server
-./build-vm.sh
-
-# Start the Windows AD VM
-./start-vm.sh
-```
-
-This creates:
-- **Windows Server 2022** with Active Directory
-- **Domain Controller** with test users
-- **LDAP server** (ports 389/636) for Keycloak integration
-
-**Note**: Windows VM requires ~4GB RAM and takes 15-20 minutes to build.
-
-### Step 4: Verify Everything is Running
-```bash
-# Comprehensive status check
+# Verify complete status
 ./check-status.sh
 
-# Quick Docker check
-docker compose ps
-
-# Windows VM status (if applicable)
-cd windows-ad-server && ./status.sh && cd ..
-
-# Test OAuth integration
-./test-oauth-integration.sh
-```
-
-**Expected status from `./check-status.sh`:**
-- ✅ Docker containers: keycloak-server, ubuntu-sshd-client, keycloak-db
-- ✅ Keycloak accessible on port 8080
-- ✅ SSH server accessible on port 2222
-- ✅ OAuth Device Flow endpoint working
-- ⚠️ Windows VM: Built but not running (if you haven't started it)
-- ✅ System prerequisites: Docker, jq, etc.
-
-### Step 5: Test OAuth Device Flow
-```bash
-# Interactive device flow demo
+# Test OAuth Device Flow with AD authentication
 ./demo-oauth-device-flow.sh
+
+# Test SSH with Active Directory user
+ssh aduser@localhost -p 2222
 ```
 
-This will:
-1. Request a device code from Keycloak
-2. Display a user code and verification URL
-3. Open your browser to the verification page
-4. Wait for you to authenticate
-5. Show the resulting OAuth tokens
+**Expected authentication flow:**
+1. SSH triggers OAuth Device Flow
+2. User completes authentication in browser
+3. Keycloak authenticates against Active Directory via LDAP
+4. AD group memberships are included in OAuth token claims
+5. SSH session established with AD user identity
 
-### Step 6: Test SSH with OAuth
-```bash
-# Try SSH login (will trigger OAuth flow)
-ssh testuser@localhost -p 2222
-```
-
-When prompted:
-1. Note the device code and URL displayed
-2. Open the URL in your browser
-3. Enter the device code
-4. Authenticate with: `testuser` / `testpass`
-5. SSH session will be established
-
-### Step 7: Access Admin Interfaces
+### Step 4: Access Admin Interfaces
 
 **Keycloak Admin Console:**
 - URL: http://localhost:8080/admin
-- Login: admin/admin
+- Login: admin/admin_password
+- Check: User Federation → Windows AD LDAP (should show users synced from AD)
 
-**Windows AD Server (if running):**
-- RDP: `rdesktop localhost:3389` or similar RDP client
-- Login: Administrator/password (see windows-ad-server/README.md)
+**Windows AD Server:**
+- RDP: `rdesktop localhost:3389`
+- Domain: hybrid.local
+- Login: Administrator/[password in VM scripts]
+- Manage: Active Directory Users and Computers
 
 **Pre-configured OAuth Details:**
 - **Client ID**: `ssh-pam-client`

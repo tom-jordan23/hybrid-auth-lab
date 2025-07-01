@@ -2,81 +2,99 @@
 
 ## What This Tutorial Teaches
 
-This project demonstrates how to modernize SSH authentication using **OAuth 2.0 Device Flow** instead of traditional passwords or SSH keys. You'll learn to integrate modern identity providers (like Keycloak) with traditional Linux services, optionally federated with Windows Active Directory.
+This project demonstrates how to implement **OAuth 2.0 Device Flow** authentication for traditional Linux services like SSH, integrated with **Windows Active Directory** as the authentication source. You'll learn to create a complete hybrid authentication solution that bridges modern OAuth with traditional enterprise infrastructure.
 
-## 🚀 Quick Start (5 minutes) - Docker Only
+## 🏢 Complete Hybrid Authentication (30 minutes)
 
-### 1. Start the Core Environment
-```bash
-git clone <this-repo>
-cd hybrid-auth-lab
-./build.sh
-
-# Verify everything is working
-./check-status.sh
-```
-
-### 2. Test OAuth Device Flow
-```bash
-./demo-oauth-device-flow.sh
-```
-
-This opens your browser and demonstrates the OAuth flow that SSH will use.
-
-### 3. Try OAuth SSH Login
-```bash
-ssh testuser@localhost -p 2222
-```
-
-When prompted:
-1. Note the verification URL and code
-2. Open the URL in your browser  
-3. Enter the code and login with: `testuser` / `testpass`
-4. Your SSH session will be established!
-
-## 🏢 Full Lab Setup (20 minutes) - With Windows AD
-
-For the complete hybrid authentication experience including Windows Active Directory:
+This tutorial builds a complete enterprise authentication scenario:
+- **Windows Active Directory** as the user store
+- **Keycloak** as the OAuth 2.0 server with LDAP federation
+- **Linux SSH** with OAuth Device Flow authentication
+- **Group membership** claims from AD in OAuth tokens
 
 ### Prerequisites
 ```bash
 # Install required software (Ubuntu/Debian)
-sudo apt install qemu-kvm qemu-system-x86 qemu-utils packer
+sudo apt install docker.io docker-compose qemu-kvm qemu-system-x86 packer jq
 
 # OR for Fedora/RHEL
-sudo dnf install qemu-kvm qemu-system-x86 packer
+sudo dnf install docker docker-compose qemu-kvm qemu-system-x86 packer jq
 
-# Add user to kvm group and relogin
-sudo usermod -a -G kvm $USER
+# Add user to required groups and relogin
+sudo usermod -a -G docker,kvm $USER
 # Logout and login again
 ```
 
 **System Requirements:**
-- 8GB+ RAM (4GB for Windows VM)
-- 20GB+ free disk space
+- 8GB+ RAM (4GB for Windows AD VM)
+- 30GB+ free disk space  
 - CPU with virtualization support
 
-### Full Setup Steps
+### Complete Setup (Build Windows AD First!)
 ```bash
-# 1. Start Docker components
-./build.sh
+# 1. Clone with submodules (includes Windows AD server)
+git clone --recursive <this-repo>
+cd hybrid-auth-lab
 
-# 2. Build Windows AD server (takes 15-20 minutes)
+# If you already cloned without --recursive:
+# git submodule update --init --recursive
+
+# Make scripts executable
+chmod +x *.sh windows-ad-server/*.sh
+
+# 2. Build Windows AD Domain Controller FIRST (takes 15-20 minutes)
 cd windows-ad-server
-./build-vm.sh
+./build-vm.sh              # Build Windows Server 2022 with AD
+./start-vm.sh               # Start domain controller  
+./status.sh                 # Verify AD is running with LDAP
+cd ..
 
-# 3. Start Windows AD server
-./start-vm.sh
+# 3. Build OAuth components with AD integration (takes 5 minutes)
+./build.sh                  # Automatically configures Keycloak LDAP federation
 
-# 4. Check complete status
-cd .. && ./check-status.sh
+# 4. Verify complete setup
+./check-status.sh
 
-# 5. Configure Keycloak to use Windows AD
-./setup-ad-ldap.sh
-
-# 6. Test complete integration
-ssh windowsuser@localhost -p 2222
+# 5. Test hybrid authentication with Active Directory user
+ssh Administrator@localhost -p 2222
+# Use AD credentials in OAuth browser flow!
 ```
+
+**Why Windows AD First?**
+- Keycloak configures LDAP federation during startup
+- AD provides users and groups for OAuth claims
+- Demonstrates real enterprise authentication flow
+
+## 🚀 Simplified Test (5 minutes) - OAuth Concepts Only
+
+If you want to understand OAuth Device Flow concepts without building Windows AD:
+
+**Note:** This skips Active Directory integration and uses local Keycloak test users instead.
+
+### 1. Start Core Components Only
+```bash
+git clone --recursive <this-repo>
+cd hybrid-auth-lab
+
+# Start only Docker components (skips Windows AD requirement)
+docker compose up -d
+
+# Verify OAuth components
+./test-oauth-integration.sh
+```
+
+### 2. Test OAuth Device Flow Concepts
+```bash
+./demo-oauth-device-flow.sh
+```
+
+### 3. Try OAuth SSH (with test users)
+```bash
+ssh testuser@localhost -p 2222
+# Uses local Keycloak user: testuser/testpass
+```
+
+**Limitation:** This doesn't demonstrate real enterprise authentication or group claims from Active Directory.
 
 ## 🎯 What's Different About This Authentication?
 
