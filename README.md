@@ -24,6 +24,25 @@ This project sets up a hybrid authentication environment with:
 
 ## Quick Start
 
+For a rapid setup of OAuth/PAM authentication:
+
+```bash
+# 1. Start the lab environment
+./build.sh
+
+# 2. Set up OAuth/PAM authentication (optional: set client secret)
+export KEYCLOAK_CLIENT_SECRET="your_client_secret_from_keycloak"
+./quick-start-oauth.sh setup
+
+# 3. Test SSH login with OAuth
+ssh testuser@localhost -p 2222
+# Follow device flow instructions in browser
+```
+
+For detailed step-by-step setup, continue with the sections below.
+
+## Detailed Setup
+
 ### 1. Start Docker Services
 
 ```bash
@@ -304,3 +323,122 @@ ssh -o ConnectTimeout=5 vagrant@localhost -p 2222
 # Check Docker network
 docker network inspect hybrid-auth-lab_hybrid-auth-network
 ```
+
+## Keycloak Setup and OAuth Configuration
+
+### Quick Setup Guide
+
+1. **Start the services**:
+   ```bash
+   ./build.sh
+   ```
+
+2. **Start Windows AD Server** (for LDAP integration):
+   ```bash
+   cd windows-ad-server
+   ./start-vm.sh
+   ```
+
+3. **Setup LDAP connectivity**:
+   ```bash
+   ./setup-ad-ldap.sh detect    # Find AD server
+   ./setup-ad-ldap.sh test AD_IP DOMAIN  # Test connectivity
+   ```
+
+4. **Access Keycloak Admin Console**: 
+   - URL: http://localhost:8080 (or use `./network-info.sh` for network access)
+   - Username: `admin`
+   - Password: `admin_password`
+
+5. **Follow the complete setup guide**:
+   ```bash
+   # Open the detailed configuration guide
+   cat docs/keycloak-setup-guide.md
+   
+   # Or view in your browser/editor
+   ```
+
+### OAuth Device Flow Testing
+
+After setting up your realm and OAuth client:
+
+```bash
+# Test device flow with bash script
+cd examples
+./test-device-flow.sh
+
+# Or test with Node.js
+node test-device-flow.js
+
+# For network access, set your local IP
+KEYCLOAK_URL=http://YOUR_LOCAL_IP:8080 ./test-device-flow.sh
+```
+
+### Key Configuration Steps
+
+1. **Start Services**: Windows AD VM + Docker containers
+2. **Configure LDAP**: Import AD users into Keycloak via LDAP
+3. **Create Realm**: `hybrid-auth` (or your preferred name)
+4. **Enable Device Flow**: Realm Settings → Advanced → OAuth 2.0 Device Authorization Grant
+5. **Create OAuth Client**: `device-flow-client` with device flow enabled
+6. **Test Integration**: Use provided scripts to verify setup
+
+See `docs/keycloak-setup-guide.md` for detailed step-by-step instructions
+
+## 6. Configure OAuth/PAM Authentication (Linux Client)
+
+Configure the Ubuntu client to authenticate users via OAuth Device Flow with Keycloak:
+
+```bash
+# Connect to the Ubuntu client container
+docker exec -it ubuntu-client bash
+
+# Set up OAuth/PAM authentication
+export KEYCLOAK_CLIENT_SECRET="your_client_secret_from_step_3"
+/opt/scripts/setup-oauth-pam.sh setup
+
+# Create OAuth users
+oauth-create john.doe "John Doe" "john.doe@example.com"
+oauth-create jane.smith "Jane Smith" "jane.smith@example.com"
+
+# Test OAuth authentication
+exit  # Exit container
+ssh john.doe@localhost -p 2222
+# Follow device flow instructions in browser
+```
+
+For detailed OAuth/PAM setup instructions, see [OAuth/PAM Setup Guide](docs/oauth-pam-setup-guide.md).
+
+## 7. Test the Complete Authentication Flow
+
+Test the complete hybrid authentication flow:
+
+```bash
+# 1. Test OAuth Device Flow directly
+./examples/test-oauth-device-flow.sh john.doe
+
+# 2. Test SSH login with OAuth
+ssh john.doe@localhost -p 2222
+# Follow device flow instructions
+# Complete authentication in browser
+# You should be logged into the Ubuntu client
+
+# 3. Verify user session
+whoami
+pwd
+cat ~/.oauth_welcome
+
+# 4. Test with different users
+ssh jane.smith@localhost -p 2222
+```
+
+The authentication flow works as follows:
+1. User attempts SSH login to Ubuntu client
+2. PAM triggers OAuth Device Flow authentication
+3. User visits Keycloak URL and enters device code
+4. User authenticates against AD (via LDAP) in Keycloak
+5. Keycloak issues OAuth tokens
+6. PAM validates tokens and creates user session
+7. User is logged into Ubuntu client
+
+## 8. Troubleshooting

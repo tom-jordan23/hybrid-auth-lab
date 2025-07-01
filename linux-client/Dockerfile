@@ -35,6 +35,14 @@ RUN apt-get update && \
         && apt-get clean \
         && rm -rf /var/lib/apt/lists/*
 
+# Install OAuth/PAM dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    jq \
+    libpam-modules \
+    libpam-runtime \
+    && rm -rf /var/lib/apt/lists/*
+
 # Create vagrant user
 RUN useradd -m -s /bin/bash vagrant && \
     echo 'vagrant:vagrant' | chpasswd && \
@@ -60,6 +68,14 @@ RUN systemctl enable ssh && \
 # Copy startup script
 COPY scripts/start-services.sh /usr/local/bin/start-services.sh
 RUN chmod +x /usr/local/bin/start-services.sh
+
+# Copy OAuth configuration and scripts
+COPY config/ /opt/config/
+COPY scripts/ /opt/scripts/
+RUN chmod +x /opt/scripts/*.sh
+
+# Create auth directory for OAuth scripts
+RUN mkdir -p /opt/auth
 
 # Expose SSH port
 EXPOSE 22

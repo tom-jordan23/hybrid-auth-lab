@@ -1,0 +1,45 @@
+# SSSD Configuration for OAuth/OIDC Authentication with Keycloak
+# This configuration enables PAM authentication via OAuth tokens from Keycloak
+
+[sssd]
+domains = hybrid-auth
+config_file_version = 2
+services = nss, pam
+
+[domain/hybrid-auth]
+# OAuth/OIDC provider configuration
+id_provider = oauth2
+auth_provider = oauth2
+access_provider = oauth2
+
+# OAuth provider settings
+oauth2_issuer = http://localhost:8080/realms/hybrid-auth
+oauth2_client_id = ssh-pam-client
+oauth2_client_secret = YOUR_CLIENT_SECRET_HERE
+oauth2_scope = openid profile email
+
+# Token validation
+oauth2_token_endpoint = http://localhost:8080/realms/hybrid-auth/protocol/openid-connect/token
+oauth2_userinfo_endpoint = http://localhost:8080/realms/hybrid-auth/protocol/openid-connect/userinfo
+oauth2_introspection_endpoint = http://localhost:8080/realms/hybrid-auth/protocol/openid-connect/token/introspect
+
+# User mapping
+oauth2_username_attribute = preferred_username
+oauth2_name_attribute = name
+oauth2_email_attribute = email
+
+# Authentication flow
+oauth2_device_flow = true
+oauth2_device_authorization_endpoint = http://localhost:8080/realms/hybrid-auth/protocol/openid-connect/auth/device
+
+# Cache settings
+cache_credentials = true
+krb5_store_password_if_offline = false
+
+# User settings
+default_shell = /bin/bash
+fallback_homedir = /home/%u
+auto_private_groups = true
+
+# Debug (remove in production)
+debug_level = 9
